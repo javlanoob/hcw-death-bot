@@ -96,7 +96,11 @@ def boss_tables(page_html):
     return [t for t in ids if t >= FIRST_BOSS_TABLE]
 
 
-def scan(max_pages, delay=0.5, bosses=True):
+SKILL_URL = "https://secure.runescape.com/m=hiscore_oldschool_hardcore_mains/overall?table=%d&page=1"
+SKILL_TABLES = range(1, 25)  # table 0 is Overall (scanned separately); 1-24 are the individual skills
+
+
+def scan(max_pages, delay=0.5, bosses=True, skills=True):
     """Dead players on the first max_pages overall pages (25 per page, so 4 = top 100) and, if
     bosses is set, on the front page of every boss hiscore. Deduplicated by name."""
     found, first = {}, ""
@@ -113,6 +117,16 @@ def scan(max_pages, delay=0.5, bosses=True):
             break
         add(dead)
         time.sleep(delay)
+    if skills:
+        for t in SKILL_TABLES:
+            try:
+                dead = parse_rows(fetch(SKILL_URL % t))[1]
+                for d in dead:  # rank/level/xp here belong to that skill, not Overall: refilled from the player's record
+                    d["rank"] = d["level"] = d["xp"] = 0
+                add(dead)
+            except Exception as e:
+                print("skill table %d failed: %s" % (t, e), file=sys.stderr)
+            time.sleep(delay)
     if bosses:
         for t in boss_tables(first or fetch(BASE % 1)):
             try:
@@ -541,7 +555,7 @@ def save_state(seen):
 
 
 def run_once(args):
-    deaths = scan(args.max_pages, bosses=not args.no_bosses)
+    deaths = scan(args.max_pages, bosses=not args.no_bosses, skills=not args.no_skills)
     seen = load_state()
     first_run = seen is None
     seen = seen or set()
@@ -576,6 +590,8 @@ def run_once(args):
                 print("post failed for %s: %s" % (d["name"], e), file=sys.stderr)
                 continue
         seen.add(death_key(d))
+        if args.post:
+            save_state(seen)  # persist right after each post so a later crash can't cause a repost
     if first_run and not announce:
         seen.update(death_key(d) for d in new)  # baseline: don't announce old deaths
         save_state(seen)
@@ -589,6 +605,7 @@ def main():
     ap.add_argument("--loop", type=int, metavar="SECONDS", help="repeat forever")
     ap.add_argument("--max-pages", type=int, default=4, help="overall hiscore pages to scan, 25 players each (4 = top 100)")
     ap.add_argument("--no-bosses", action="store_true", help="skip the front page of each boss hiscore")
+    ap.add_argument("--no-skills", action="store_true", help="skip the front page of each skill hiscore")
     ap.add_argument("--save-cards", action="store_true", help="write each stats card PNG to ./cards")
     ap.add_argument("--test-tweet", metavar="NAME", help="post one test tweet with NAME's card, then exit")
     ap.add_argument("--announce-existing", action="store_true")
