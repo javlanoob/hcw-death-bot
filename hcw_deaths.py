@@ -645,11 +645,13 @@ def health_check():
             from twikit import Client
             c = Client("en-US")
             c.set_cookies({"auth_token": os.environ["X_AUTH_TOKEN"], "ct0": os.environ["X_CT0"]})
-            return (await c.user()).screen_name
+            await c.get_latest_timeline(count=1)  # authenticated read-only GraphQL call
+            return "ok"
         try:
-            print("X cookies OK, logged in as @%s" % asyncio.run(who()))
+            asyncio.run(who())
+            print("X cookies OK (authenticated read succeeded)")
         except Exception as e:
-            problems.append("X cookies not working (expired or logged out?): %s" % type(e).__name__)
+            problems.append("X cookies not working (expired or logged out?): %s %s" % (type(e).__name__, str(e)[:150]))
     else:
         problems.append("X_AUTH_TOKEN / X_CT0 not set")
     for p in problems:
