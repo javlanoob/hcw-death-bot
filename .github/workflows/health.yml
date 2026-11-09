@@ -34,6 +34,12 @@ jobs:
           fi
           last=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/scan.yml/runs?event=schedule&per_page=1" -q '.workflow_runs[0].created_at')
           echo "last scheduled scan: ${last:-never}"
-          if [ -z "$last" ] || [ $(( $(date +%s) - $(date -d "$last" +%s) )) -gt 10800 ]; then
+          if [ -z "$last" ]; then
+            echo "::warning::no scheduled scan has run yet (GitHub can take a while to start new schedules); will fail if this persists"
+            created=$(gh api "repos/$GITHUB_REPOSITORY" -q .created_at)
+            [ $(( $(date +%s) - $(date -d "$created" +%s) )) -gt 86400 ] && { echo "::error::repo is over a day old and scan never ran on schedule"; exit 1; }
+            exit 0
+          fi
+          if [ $(( $(date +%s) - $(date -d "$last" +%s) )) -gt 10800 ]; then
             echo "::error::no scheduled scan in the last 3 hours"; exit 1
           fi
