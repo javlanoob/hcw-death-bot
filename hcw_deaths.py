@@ -590,8 +590,19 @@ def main():
     ap.add_argument("--max-pages", type=int, default=4, help="overall hiscore pages to scan, 25 players each (4 = top 100)")
     ap.add_argument("--no-bosses", action="store_true", help="skip the front page of each boss hiscore")
     ap.add_argument("--save-cards", action="store_true", help="write each stats card PNG to ./cards")
+    ap.add_argument("--test-tweet", metavar="NAME", help="post one test tweet with NAME's card, then exit")
     ap.add_argument("--announce-existing", action="store_true")
     args = ap.parse_args()
+    if args.test_tweet:
+        data = lookup(args.test_tweet)
+        d = {"name": args.test_tweet, "rank": 0, "level": 0, "xp": 0, "died": "test"}
+        ov = next((x for x in data.get("skills", []) if x.get("name") == "Overall"), None)
+        if ov:
+            d["rank"], d["level"], d["xp"] = ov["rank"], ov["level"], ov["xp"]
+        d["activities"] = top_activities(data)
+        post_tweet("Test tweet - HCW death bot is live.", render_card(d, data))
+        print("test tweet posted")
+        return
     sys.stdout.reconfigure(encoding="utf-8")  # Windows consoles choke on the skull emoji
     while True:
         run_once(args)

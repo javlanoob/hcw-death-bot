@@ -1,0 +1,18 @@
+name: test-tweet
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow twifork==2.4.0
+      - env:
+          X_AUTH_TOKEN: ${{ secrets.X_AUTH_TOKEN }}
+          X_CT0: ${{ secrets.X_CT0 }}
+          HCW_RELAY: https://hcw-relay.hcwdeaths14788.workers.dev/
+        run: python hcw_deaths.py --test-tweet "HC Flathead"
