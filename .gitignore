@@ -1,0 +1,13 @@
+# credentials / session data - never commit
+cookies.json
+*cookies*.json
+.env
+*.env
+x_session*
+# scratch
+cards/
+wiki/
+assets/_*.png
+__pycache__/
+assets/reference.png
+assets/osrs_ref.png
