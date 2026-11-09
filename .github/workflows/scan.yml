@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pillow twifork==2.4.0
+      - run: pip install pillow twifork==2.4.0 curl_cffi
       - name: Scan and post
         env:
           X_AUTH_TOKEN: ${{ secrets.X_AUTH_TOKEN }}

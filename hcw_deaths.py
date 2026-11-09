@@ -70,6 +70,13 @@ def parse_rows(page_html):
 
 
 def fetch(url):
+    try:
+        from curl_cffi import requests as cr  # browser TLS fingerprint; needed from datacenter IPs
+        r = cr.get(url, impersonate="chrome", timeout=30)
+        r.raise_for_status()
+        return r.text
+    except ImportError:
+        pass
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     with urllib.request.urlopen(req, timeout=30) as r:
         return r.read().decode("utf-8", "replace")
