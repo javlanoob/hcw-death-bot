@@ -70,6 +70,11 @@ def parse_rows(page_html):
 
 
 def fetch(url):
+    relay = os.environ.get("HCW_RELAY")  # Cloudflare Worker that fetches the list pages (blocked from GitHub IPs)
+    if relay and "index_lite" not in url:
+        req = urllib.request.Request(relay + "?u=" + urllib.parse.quote(url, safe=""), headers={"User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return r.read().decode("utf-8", "replace")
     try:
         from curl_cffi import requests as cr  # browser TLS fingerprint; needed from datacenter IPs
         r = cr.get(url, impersonate="chrome", timeout=30)

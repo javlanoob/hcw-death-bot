@@ -17,11 +17,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pillow twifork==2.4.0 curl_cffi
+      - run: pip install pillow twifork==2.4.0
       - name: Scan and post
         env:
           X_AUTH_TOKEN: ${{ secrets.X_AUTH_TOKEN }}
           X_CT0: ${{ secrets.X_CT0 }}
+          HCW_RELAY: https://hcw-relay.hcwdeaths14788.workers.dev/
         run: python hcw_deaths.py --post
       - name: Commit state
         run: |
