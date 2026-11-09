@@ -101,7 +101,7 @@ SKILL_TABLES = range(1, 25)  # table 0 is Overall (scanned separately); 1-24 are
 
 
 def scan(max_pages, delay=0.5, bosses=True, skills=True):
-    """Dead players on the first max_pages overall pages (25 per page, so 4 = top 100) and, if
+    """Dead players on the first max_pages overall pages (25 per page, so 10 = top 250) and, if
     bosses is set, on the front page of every boss hiscore. Deduplicated by name."""
     found, first = {}, ""
     def add(dead):
@@ -663,7 +663,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--post", action="store_true", help="actually tweet (default: dry run)")
     ap.add_argument("--loop", type=int, metavar="SECONDS", help="repeat forever")
-    ap.add_argument("--max-pages", type=int, default=4, help="overall hiscore pages to scan, 25 players each (4 = top 100)")
+    ap.add_argument("--max-pages", type=int, default=10, help="overall hiscore pages to scan, 25 players each (10 = top 250)")
     ap.add_argument("--no-bosses", action="store_true", help="skip the front page of each boss hiscore")
     ap.add_argument("--no-skills", action="store_true", help="skip the front page of each skill hiscore")
     ap.add_argument("--save-cards", action="store_true", help="write each stats card PNG to ./cards")
