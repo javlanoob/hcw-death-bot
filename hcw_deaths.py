@@ -628,6 +628,35 @@ def run_once(args):
         save_state(seen)  # dry runs never mark deaths as seen
 
 
+def health_check():
+    """Read-only checks (posts nothing): hiscores reachable, X cookies still logged in. Exit 1 on failure."""
+    import asyncio
+    problems = []
+    try:
+        count, _ = parse_rows(fetch(BASE % 1))
+        if count == 0:
+            problems.append("hiscores page returned no rows (blocked or layout changed)")
+        else:
+            print("hiscores OK (%d rows)" % count)
+    except Exception as e:
+        problems.append("hiscores fetch failed: %s" % e)
+    if os.environ.get("X_AUTH_TOKEN") and os.environ.get("X_CT0"):
+        async def who():
+            from twikit import Client
+            c = Client("en-US")
+            c.set_cookies({"auth_token": os.environ["X_AUTH_TOKEN"], "ct0": os.environ["X_CT0"]})
+            return (await c.user()).screen_name
+        try:
+            print("X cookies OK, logged in as @%s" % asyncio.run(who()))
+        except Exception as e:
+            problems.append("X cookies not working (expired or logged out?): %s" % type(e).__name__)
+    else:
+        problems.append("X_AUTH_TOKEN / X_CT0 not set")
+    for p in problems:
+        print("PROBLEM: " + p, file=sys.stderr)
+    sys.exit(1 if problems else 0)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--post", action="store_true", help="actually tweet (default: dry run)")
@@ -636,9 +665,12 @@ def main():
     ap.add_argument("--no-bosses", action="store_true", help="skip the front page of each boss hiscore")
     ap.add_argument("--no-skills", action="store_true", help="skip the front page of each skill hiscore")
     ap.add_argument("--save-cards", action="store_true", help="write each stats card PNG to ./cards")
+    ap.add_argument("--health", action="store_true", help="check hiscores access and X login, post nothing")
     ap.add_argument("--test-tweet", metavar="NAME", help="post one test tweet with NAME's card, then exit")
     ap.add_argument("--announce-existing", action="store_true")
     args = ap.parse_args()
+    if args.health:
+        health_check()
     if args.test_tweet:
         data = lookup(args.test_tweet)
         d = {"name": args.test_tweet, "rank": 0, "level": 0, "xp": 0, "died": "test"}

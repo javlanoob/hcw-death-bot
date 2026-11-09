@@ -1,0 +1,39 @@
+name: health
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+permissions:
+  actions: write   # to re-enable the scan workflow if GitHub paused it
+  contents: read
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pillow twifork==2.4.0
+      - name: Check hiscores and X login (posts nothing)
+        env:
+          X_AUTH_TOKEN: ${{ secrets.X_AUTH_TOKEN }}
+          X_CT0: ${{ secrets.X_CT0 }}
+          HCW_RELAY: https://hcw-relay.hcwdeaths14788.workers.dev/
+        run: python hcw_deaths.py --health
+      - name: Make sure the scan schedule is enabled and firing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          state=$(gh workflow view scan.yml --repo "$GITHUB_REPOSITORY" --json state -q .state 2>/dev/null || gh api "repos/$GITHUB_REPOSITORY/actions/workflows/scan.yml" -q .state)
+          echo "scan workflow state: $state"
+          if [ "$state" != "active" ]; then
+            gh workflow enable scan.yml --repo "$GITHUB_REPOSITORY" || gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/scan.yml/enable"
+            echo "::error::scan workflow was disabled; re-enabled it"; exit 1
+          fi
+          last=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/scan.yml/runs?event=schedule&per_page=1" -q '.workflow_runs[0].created_at')
+          echo "last scheduled scan: ${last:-never}"
+          if [ -z "$last" ] || [ $(( $(date +%s) - $(date -d "$last" +%s) )) -gt 10800 ]; then
+            echo "::error::no scheduled scan in the last 3 hours"; exit 1
+          fi
