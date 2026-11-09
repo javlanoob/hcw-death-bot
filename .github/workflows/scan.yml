@@ -29,7 +29,7 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@users.noreply.github.com"
-          git add seen_deaths.json
+          git add seen_deaths.json failed_posts.json 2>/dev/null || git add seen_deaths.json
           git diff --cached --quiet && exit 0
           git commit -m "update state"
           for i in 1 2 3 4 5; do git pull -q --rebase && git push && exit 0; sleep 5; done

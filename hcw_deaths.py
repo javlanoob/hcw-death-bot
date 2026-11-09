@@ -554,6 +554,23 @@ def save_state(seen):
         json.dump(sorted(seen), f)
 
 
+FAIL_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "failed_posts.json")
+MAX_ATTEMPTS = 3  # give up on a death after this many failed posts, so an ambiguous failure can't repost forever
+
+
+def load_failures():
+    try:
+        with open(FAIL_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, ValueError):
+        return {}
+
+
+def save_failures(fails):
+    with open(FAIL_FILE, "w", encoding="utf-8") as f:
+        json.dump(fails, f, sort_keys=True)
+
+
 def run_once(args):
     deaths = scan(args.max_pages, bosses=not args.no_bosses, skills=not args.no_skills)
     seen = load_state()
@@ -570,7 +587,15 @@ def run_once(args):
     announce = new if (not first_run or args.announce_existing) else []
     print("scanned: %d dead players, %d new%s" % (
         len(deaths), len(new), " (first run: recording only)" if first_run and not announce else ""))
+    fails = load_failures()
     for d in announce:
+        k = death_key(d)
+        if fails.get(k, 0) >= MAX_ATTEMPTS:
+            print("giving up on %s after %d failed posts" % (d["name"], fails[k]), file=sys.stderr)
+            seen.add(k)
+            if args.post:
+                save_state(seen)
+            continue
         data = lookup(d["name"])
         ov = next((x for x in data.get("skills", []) if x["name"] == "Overall"), None)
         if ov and not d["rank"]:  # found on a boss table: take overall figures from the player's record
@@ -588,8 +613,12 @@ def run_once(args):
                 post_tweet(text, png)
             except Exception as e:  # keep it unseen so we retry next scan
                 print("post failed for %s: %s" % (d["name"], e), file=sys.stderr)
+                fails[k] = fails.get(k, 0) + 1
+                save_failures(fails)
                 continue
-        seen.add(death_key(d))
+            fails.pop(k, None)
+            save_failures(fails)
+        seen.add(k)
         if args.post:
             save_state(seen)  # persist right after each post so a later crash can't cause a repost
     if first_run and not announce:
