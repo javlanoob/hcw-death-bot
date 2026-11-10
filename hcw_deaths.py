@@ -161,6 +161,13 @@ def top_activities(data):
     return sorted(acts, key=lambda t: t[0])
 
 
+def top_skills(data):
+    """[(rank, skill, xp)] for individual skills (not Overall) ranked BOSS_TOP or better."""
+    sk = [(x["rank"], x["name"], x["xp"]) for x in data.get("skills", [])
+          if x.get("name") != "Overall" and 0 < x.get("rank", -1) <= BOSS_TOP and x.get("xp", 0) > 0]
+    return sorted(sk, key=lambda t: t[0])
+
+
 # --- stats card image (needs Pillow; without it tweets are text-only) -------------------
 # Layout copied from HCIM_Deaths2: 3 skill columns (+ EHP / EHB / total boxes), then the
 # non-zero hiscores activities (clues, minigames, bosses) filled column by column.
@@ -451,7 +458,8 @@ def render_card(d, data):
 
 def tweet_text(d):
     head = "%s has died!\n Rank %s Overall with %s XP\n--" % (d["name"], f"{d['rank']:,}", f"{d['xp']:,}")
-    lines = ["Rank %d %s - %s KC" % (r, n, f"{k:,}") for r, n, k in d.get("activities", [])]
+    lines = ["Rank %d %s - %s XP" % (r, n, f"{x:,}") for r, n, x in d.get("skills_top", [])]
+    lines += ["Rank %d %s - %s KC" % (r, n, f"{k:,}") for r, n, k in d.get("activities", [])]
     while lines and len("\n".join([head] + lines + ["--"])) > 280:
         lines.pop()  # drop the lowest-ranked lines rather than cutting mid-line
     return "\n".join([head] + lines + ["--"])
@@ -601,6 +609,7 @@ def run_once(args):
         if ov and not d["rank"]:  # found on a boss table: take overall figures from the player's record
             d["rank"], d["level"], d["xp"] = ov["rank"], ov["level"], ov["xp"]
         d["activities"] = top_activities(data)
+        d["skills_top"] = top_skills(data)
         text = tweet_text(d)
         png = render_card(d, data)
         if args.save_cards and png:
@@ -680,6 +689,7 @@ def main():
         if ov:
             d["rank"], d["level"], d["xp"] = ov["rank"], ov["level"], ov["xp"]
         d["activities"] = top_activities(data)
+        d["skills_top"] = top_skills(data)
         post_tweet("Test tweet - HCW death bot is live.", render_card(d, data))
         print("test tweet posted")
         return
