@@ -608,6 +608,14 @@ def run_once(args):
         ov = next((x for x in data.get("skills", []) if x["name"] == "Overall"), None)
         if ov and not d["rank"]:  # found on a boss table: take overall figures from the player's record
             d["rank"], d["level"], d["xp"] = ov["rank"], ov["level"], ov["xp"]
+        if not ov and not d["rank"]:
+            # No hiscores record at all (lookup 404 / hidden or placeholder row such as "-"): a tweet would be
+            # empty ("Rank 0 Overall with 0 XP"), so don't post it. Retry a few times in case it's a hiccup.
+            print("no hiscores data for %r, not tweeting" % d["name"], file=sys.stderr)
+            if args.post:
+                fails[k] = fails.get(k, 0) + 1
+                save_failures(fails)
+            continue
         d["activities"] = top_activities(data)
         d["skills_top"] = top_skills(data)
         text = tweet_text(d)
